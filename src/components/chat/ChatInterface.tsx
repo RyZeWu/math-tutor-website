@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useChat } from '@/contexts/ChatContext';
 
@@ -35,6 +35,7 @@ export default function ChatInterface() {
         handleAutoResponse(formattedMessages[0].content);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChat]);
 
   const scrollToBottom = () => {
