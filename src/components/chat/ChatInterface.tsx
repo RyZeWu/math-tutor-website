@@ -12,12 +12,30 @@ interface Message {
 }
 
 export default function ChatInterface() {
-  const { t } = useLanguage();
-  const { currentChat } = useChat();
+  const { t, currentLanguage } = useLanguage();
+  const { currentChat, setCurrentChat } = useChat();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load messages from current chat when it changes
+  useEffect(() => {
+    if (currentChat && currentChat.messages) {
+      const formattedMessages = currentChat.messages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        role: msg.role,
+        timestamp: new Date(msg.timestamp)
+      }));
+      setMessages(formattedMessages);
+      
+      // If there's only one message (from landing page), automatically get AI response
+      if (formattedMessages.length === 1 && formattedMessages[0].role === 'user') {
+        handleAutoResponse(formattedMessages[0].content);
+      }
+    }
+  }, [currentChat]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -26,6 +44,51 @@ export default function ChatInterface() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const handleAutoResponse = async (userMessage: string) => {
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch('/api/chat/message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          preferredLanguage: currentLanguage.code,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get response');
+      }
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.response,
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error: any) {
+      console.error('Error getting auto response:', error);
+      
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: error.message || 'Sorry, I encountered an error. Please try again.',
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -50,7 +113,7 @@ export default function ChatInterface() {
         },
         body: JSON.stringify({
           message: currentInput,
-          preferredLanguage: localStorage.getItem('preferredLanguage') || 'en',
+          preferredLanguage: currentLanguage.code,
         }),
       });
 
@@ -93,6 +156,29 @@ export default function ChatInterface() {
 
   return (
     <div className="flex flex-col h-screen bg-white">
+      {/* Header */}
+      <div className="border-b border-gray-200 bg-white px-4 py-3">
+        <div className="flex items-center justify-between max-w-3xl mx-auto">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setCurrentChat(null)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div>
+              <h2 className="font-semibold text-gray-900">{currentChat?.title || 'Math Chat'}</h2>
+              <p className="text-sm text-gray-500">AI Math Tutor</p>
+            </div>
+          </div>
+          <div className="text-sm text-gray-500">
+            {currentChat?.timestamp}
+          </div>
+        </div>
+      </div>
+
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-6 bg-gradient-to-b from-gray-50/50 to-white">
         <div className="max-w-3xl mx-auto space-y-4">

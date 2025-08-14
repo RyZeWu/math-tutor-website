@@ -10,11 +10,33 @@ export async function POST(request: NextRequest) {
   try {
     const { message, preferredLanguage } = await request.json();
 
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 500 }
-      );
+    // Mock mode for testing without API key
+    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'YOUR_API_KEY_HERE') {
+      console.log('Running in mock mode - no API key configured');
+      
+      // Simulate delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockResponses = {
+        en: [
+          `I understand you're asking about "${message}". Let me help you with that math concept!`,
+          `Great question! Here's how we can approach this problem...`,
+          `Let's break this down step by step to make it easier to understand.`
+        ],
+        zh: [
+          `我明白你在问关于"${message}"的问题。让我来帮你理解这个数学概念！`,
+          `好问题！让我们这样来解决这个问题...`,
+          `让我们一步一步地分解，使其更容易理解。`
+        ]
+      };
+      
+      const responses = mockResponses[preferredLanguage === 'zh' ? 'zh' : 'en'];
+      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+      
+      return NextResponse.json({
+        response: randomResponse,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     const systemPrompt = preferredLanguage === 'zh' 
@@ -41,17 +63,24 @@ export async function POST(request: NextRequest) {
       
       Remember to make math fun and understandable!`;
 
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message }
-      ],
-      temperature: 0.7,
-      max_tokens: 500,
-    });
+    let response: string;
+    
+    try {
+      const completion = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: message }
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+      });
 
-    const response = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
+      response = completion.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
+    } catch (apiError: any) {
+      console.error('OpenAI API Error:', apiError);
+      throw apiError;
+    }
 
     return NextResponse.json({
       response,
