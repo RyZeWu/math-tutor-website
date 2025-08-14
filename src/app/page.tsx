@@ -70,7 +70,7 @@ export default function Home() {
         messages: [{
           id: userMessage.id,
           content: currentInput,
-          role: 'user',
+          role: 'user' as const, 
           timestamp: userMessage.timestamp.toISOString()
         }]
       };
