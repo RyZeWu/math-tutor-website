@@ -10,33 +10,12 @@ export async function POST(request: NextRequest) {
   try {
     const { message, preferredLanguage } = await request.json();
 
-    // Mock mode for testing without API key
+    // Check if API key is configured
     if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'YOUR_API_KEY_HERE') {
-      console.log('Running in mock mode - no API key configured');
-      
-      // Simulate delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockResponses = {
-        en: [
-          `I understand you're asking about "${message}". Let me help you with that math concept!`,
-          `Great question! Here's how we can approach this problem...`,
-          `Let's break this down step by step to make it easier to understand.`
-        ],
-        zh: [
-          `我明白你在问关于"${message}"的问题。让我来帮你理解这个数学概念！`,
-          `好问题！让我们这样来解决这个问题...`,
-          `让我们一步一步地分解，使其更容易理解。`
-        ]
-      };
-      
-      const responses = mockResponses[preferredLanguage === 'zh' ? 'zh' : 'en'];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      
-      return NextResponse.json({
-        response: randomResponse,
-        timestamp: new Date().toISOString(),
-      });
+      return NextResponse.json(
+        { error: 'API key not configured. Please set up your OpenAI API key.' },
+        { status: 500 }
+      );
     }
 
     const systemPrompt = preferredLanguage === 'zh' 
@@ -66,17 +45,37 @@ export async function POST(request: NextRequest) {
     let response: string;
     
     try {
+      // Use gpt-5-nano model exclusively
+      const model = 'gpt-5-nano-2025-08-07';
+      const maxTokens = 2000;
+      const temperature = 0.9;
+      
       const completion = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        model: model,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: message }
         ],
-        temperature: 0.7,
-        max_tokens: 500,
+        temperature: temperature,
+        max_tokens: maxTokens,
       });
 
-      response = completion.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
+      response = completion.choices?.[0]?.message?.content || '';
+      
+      // Handle empty responses from nano model
+      if (!response || response.trim() === '') {
+        console.log('Empty response from model, retrying with simpler prompt...');
+        // Retry with a simpler prompt for nano model
+        const retryCompletion = await openai.chat.completions.create({
+          model: model,
+          messages: [
+            { role: 'user', content: `As a math tutor, explain: ${message}` }
+          ],
+          temperature: 0.9,
+          max_tokens: 2000,
+        });
+        response = retryCompletion.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
+      }
     } catch (apiError: any) {
       console.error('OpenAI API Error:', apiError);
       throw apiError;

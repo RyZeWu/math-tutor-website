@@ -23,6 +23,7 @@ interface ChatContextType {
   addChatSession: (session: ChatSession) => void;
   setCurrentChat: (session: ChatSession | null) => void;
   addMessage: (chatId: string, message: ChatMessage) => void;
+  deleteChat: (chatId: string) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -115,13 +116,24 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const deleteChat = (chatId: string) => {
+    // Remove the chat from history
+    setChatHistory(prev => prev.filter(chat => chat.id !== chatId));
+    
+    // If the deleted chat was the current chat, clear it
+    if (currentChat?.id === chatId) {
+      setCurrentChat(null);
+    }
+  };
+
   return (
     <ChatContext.Provider value={{
       chatHistory,
       currentChat,
       addChatSession,
       setCurrentChat,
-      addMessage
+      addMessage,
+      deleteChat
     }}>
       {children}
     </ChatContext.Provider>
