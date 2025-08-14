@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
 import Sidebar from '@/components/ui/Sidebar';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useChat } from '@/contexts/ChatContext';
+import { useChat, ChatSession } from '@/contexts/ChatContext';
 
 interface Message {
   id: string;
@@ -62,7 +62,7 @@ export default function Home() {
 
     // If this is the first message, create a new chat session
     if (messages.length === 0) {
-      const newChat = {
+      const newChat: ChatSession = {
         id: Date.now().toString(),
         title: currentInput.slice(0, 30) + (currentInput.length > 30 ? '...' : ''),
         timestamp: new Date().toLocaleString(),
