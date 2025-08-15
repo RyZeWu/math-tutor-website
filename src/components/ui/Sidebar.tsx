@@ -77,10 +77,8 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
   return (
     <>
-      {/* Main Sidebar - Always visible */}
-      <div className={`fixed top-0 left-0 h-full bg-gray-50 border-r border-gray-200 z-40 flex flex-col transition-all duration-300 ease-in-out ${
-        isOpen ? 'w-64' : 'w-16'
-      }`}>
+      {/* Main Sidebar - Full height and fixed */}
+      <div className={`h-full bg-gray-50 border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out`}>
         {/* Header */}
         <div className={`flex items-center ${isOpen ? 'justify-between' : 'justify-center'} p-4 border-b border-gray-200 bg-white h-[72px]`}>
           {isOpen && <h2 className="text-lg font-semibold text-gray-900">History</h2>}

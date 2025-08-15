@@ -18,6 +18,7 @@ export default function ChatInterface() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Load messages from current chat when it changes
   useEffect(() => {
@@ -45,6 +46,60 @@ export default function ChatInterface() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Auto-resize textarea
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    // Save current position
+    const savedPosition = textarea.selectionStart;
+    
+    // Reset to get accurate scrollHeight
+    textarea.style.height = '48px';
+    textarea.style.overflow = 'hidden';
+    
+    // Calculate new height
+    let newHeight = textarea.scrollHeight;
+    
+    // Apply constraints
+    newHeight = Math.max(48, Math.min(newHeight, 120));
+    
+    // Set new height
+    textarea.style.height = `${newHeight}px`;
+    
+    // Show scrollbar only if content exceeds max height
+    if (textarea.scrollHeight > 120) {
+      textarea.style.overflowY = 'auto';
+    } else {
+      textarea.style.overflowY = 'hidden';
+    }
+    
+    // Restore cursor position
+    textarea.setSelectionRange(savedPosition, savedPosition);
+  }, []);
+
+  // Handle input changes
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    // Immediately adjust height after state update
+    setTimeout(() => adjustTextareaHeight(), 0);
+  }, [adjustTextareaHeight]);
+
+  // Adjust on mount
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [adjustTextareaHeight]);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      adjustTextareaHeight();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [adjustTextareaHeight]);
 
   const handleAutoResponse = async (userMessage: string) => {
     setIsLoading(true);
@@ -105,6 +160,11 @@ export default function ChatInterface() {
     const currentInput = input;
     setInput('');
     setIsLoading(true);
+    
+    // Reset textarea height after clearing
+    setTimeout(() => {
+      adjustTextareaHeight();
+    }, 0);
 
     try {
       const response = await fetch('/api/chat/message', {
@@ -216,32 +276,33 @@ export default function ChatInterface() {
           )}
 
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div className={`group relative max-w-[70%]`}>
-                <div
-                  className={`rounded-2xl px-4 py-3 ${
-                    message.role === 'user'
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-white border border-gray-200 text-gray-900 shadow-sm'
-                  }`}
-                >
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+            message.role === 'user' ? (
+              <div
+                key={message.id}
+                className="flex justify-end"
+              >
+                <div className="group relative max-w-[70%]">
+                  <div className="rounded-2xl px-4 py-3 bg-gray-900 text-white">
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  </div>
+                  <span className="text-xs mt-1 px-2 block text-right text-gray-400">
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
-                <span className={`text-xs mt-1 px-2 block ${
-                  message.role === 'user' ? 'text-right text-gray-400' : 'text-left text-gray-400'
-                }`}>
+              </div>
+            ) : (
+              <div key={message.id} className="mb-4">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-900">{message.content}</p>
+                <span className="text-xs mt-1 block text-gray-400">
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-            </div>
+            )
           ))}
 
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+              <div>
                 <div className="flex space-x-1.5">
                   <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
                   <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
@@ -261,13 +322,22 @@ export default function ChatInterface() {
           <div className="flex items-end space-x-3">
             <div className="flex-1 relative">
               <textarea
+                ref={textareaRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputChange}
+                onInput={() => adjustTextareaHeight()}
                 onKeyPress={handleKeyPress}
                 placeholder={t('inputPlaceholder')}
                 className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent pr-12"
                 rows={1}
-                style={{ minHeight: '48px', maxHeight: '120px' }}
+                style={{ 
+                  height: '48px',
+                  minHeight: '48px', 
+                  maxHeight: '120px',
+                  overflowX: 'hidden',
+                  overflowY: 'hidden',
+                  lineHeight: '1.5'
+                }}
                 disabled={isLoading}
               />
               <button

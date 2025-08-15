@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
 import Sidebar from '@/components/ui/Sidebar';
+import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useChat, ChatSession } from '@/contexts/ChatContext';
 
@@ -128,16 +129,20 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex relative">
-      {/* Sidebar - Always visible */}
-      <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
+    <div className="h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex overflow-hidden">
+      {/* Sidebar - Fixed position */}
+      <div className={`fixed left-0 top-0 h-full z-30 transition-all duration-300 ease-out ${
+        isSidebarOpen ? 'w-64' : 'w-16'
+      }`}>
+        <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
+      </div>
       
-      {/* Main Content */}
+      {/* Main Content - with margin for sidebar */}
       <div className={`flex-1 flex flex-col transition-all duration-300 ease-out ${
         isSidebarOpen ? 'ml-64' : 'ml-16'
       }`}>
         {/* Header - Fixed at top */}
-        <div className="absolute top-0 right-0 z-20 px-6 py-4">
+        <div className="fixed top-0 right-0 z-20 px-6 py-4">
           <div className="flex items-center gap-2">
             {messages.length > 0 && (
               <button
@@ -157,9 +162,9 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Dynamic Content Area */}
-        <div className={`flex-1 flex flex-col transition-all duration-700 ease-out ${
-          messages.length === 0 ? 'justify-center' : 'justify-start pt-16'
+        {/* Dynamic Content Area - Main scrollable area */}
+        <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-700 ease-out ${
+          messages.length === 0 ? 'justify-center' : 'justify-start'
         }`}>
           {/* Logo and Welcome Message - Centered initially */}
           {messages.length === 0 && (
@@ -261,36 +266,48 @@ export default function Home() {
           {/* Chat Messages Area - Shows when conversation starts */}
           {messages.length > 0 && (
             <>
-              <div className="flex-1 overflow-y-auto px-4 py-4">
-                <div className="max-w-3xl mx-auto">
-                  <div className="space-y-4 pb-4">
-                    {messages.map((message) => (
+              <div className="flex-1 overflow-y-auto pt-20 px-4">
+                <div className="max-w-3xl mx-auto pb-4">
+                  <div className="space-y-4">
+                    {messages.map((message, index) => (
                       <div
                         key={message.id}
-                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        className={`animate-fade-in flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        style={{
+                          animation: `fadeIn 0.3s ease-out`,
+                          animationDelay: `${index * 0.05}s`,
+                          animationFillMode: 'backwards'
+                        }}
                       >
-                        <div className={`group relative max-w-[70%]`}>
-                          <div
-                            className={`rounded-2xl px-4 py-3 ${
-                              message.role === 'user'
-                                ? 'bg-gray-900 text-white'
-                                : 'bg-white border border-gray-200 text-gray-900 shadow-sm'
-                            }`}
-                          >
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                          </div>
-                          <span className={`text-xs mt-1 px-2 block ${
-                            message.role === 'user' ? 'text-right text-gray-400' : 'text-left text-gray-400'
-                          }`}>
-                            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                        <div className={`group relative ${message.role === 'user' ? 'max-w-[70%]' : 'max-w-[85%]'}`}>
+                          {message.role === 'user' ? (
+                            <>
+                              <div className="bg-gray-900 text-white rounded-2xl px-4 py-3 shadow-sm">
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                              </div>
+                              <span className="text-xs mt-1 px-2 block text-right text-gray-400">
+                                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+                                <div className="prose prose-sm prose-gray max-w-none">
+                                  <MarkdownRenderer content={message.content} />
+                                </div>
+                              </div>
+                              <span className="text-xs mt-1 px-2 block text-left text-gray-400">
+                                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
                     
                     {/* Loading indicator */}
                     {isLoading && (
-                      <div className="flex justify-start">
+                      <div className="flex justify-start animate-fade-in">
                         <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
                           <div className="flex space-x-1.5">
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
@@ -305,8 +322,8 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Input Section - At bottom when in chat mode */}
-              <div className="border-t border-gray-200 bg-white/90 backdrop-blur-sm px-4 py-4">
+              {/* Input Section - Fixed at bottom when in chat mode */}
+              <div className="flex-shrink-0 border-t border-gray-200 bg-white/90 backdrop-blur-sm px-4 py-4">
                 <div className="max-w-3xl mx-auto">
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-1">
                     <div className="flex items-center">
@@ -346,8 +363,8 @@ export default function Home() {
           )}
         </div>
 
-        {/* Footer text - Always at bottom */}
-        <div className="text-center py-3">
+        {/* Footer text - Fixed at bottom */}
+        <div className="flex-shrink-0 text-center py-3">
           <p className="text-gray-400 text-xs">
             {t('bottomText')}
           </p>

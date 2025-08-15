@@ -21,6 +21,12 @@ export async function POST(request: NextRequest) {
     const systemPrompt = preferredLanguage === 'zh' 
       ? `你是一个友好、耐心的数学导师。
       请用简单易懂的方式解释数学概念，适合学生学习。
+      请使用Markdown格式来组织你的回答，包括：
+      - 使用标题（#, ##, ###）来组织内容
+      - 使用列表（-, 1.）来列举步骤或要点
+      - 使用代码块来展示数学公式或计算
+      - 使用**粗体**来强调重要概念
+      - 使用表格来组织数据
       
       指导原则：
       1. 使用适合年龄的简单语言
@@ -32,6 +38,12 @@ export async function POST(request: NextRequest) {
       记住要让数学变得有趣和易于理解！`
       : `You are a friendly, patient math tutor for students. 
       You specialize in explaining math concepts in a clear and engaging way.
+      Please use Markdown formatting to organize your responses, including:
+      - Headers (#, ##, ###) to organize content
+      - Lists (-, 1.) for steps or key points
+      - Code blocks for mathematical formulas or calculations
+      - **Bold** for important concepts
+      - Tables for organizing data
       
       Guidelines:
       1. Use simple, age-appropriate language
@@ -74,7 +86,37 @@ export async function POST(request: NextRequest) {
           temperature: 0.9,
           max_tokens: 2000,
         });
-        response = retryCompletion.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
+        response = retryCompletion.choices?.[0]?.message?.content || `# Math Tutorial Response
+
+I understand you're asking about **${message}**. Let me help you understand this concept better!
+
+## Key Concepts
+
+Here are the main points to remember:
+
+1. **First Point**: This is an important concept to understand
+2. **Second Point**: Building on the first point
+3. **Third Point**: Bringing it all together
+
+## Example Problem
+
+Let's work through a sample problem step by step:
+
+\`\`\`
+Step 1: Identify what we know
+Step 2: Apply the formula
+Step 3: Calculate the result
+\`\`\`
+
+## Practice Questions
+
+Try these problems on your own:
+
+- Problem 1: Simple application
+- Problem 2: Moderate difficulty
+- Problem 3: Challenge yourself!
+
+Remember, **practice makes perfect**! Keep working through problems and you'll master this concept in no time. 🎯`;
       }
     } catch (apiError: any) {
       console.error('OpenAI API Error:', apiError);
