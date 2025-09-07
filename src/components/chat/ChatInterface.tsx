@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useChat } from '@/contexts/ChatContext';
+import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 
 interface Message {
   id: string;
@@ -116,20 +117,32 @@ export default function ChatInterface() {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to get response');
+        let errMsg = 'Failed to get response';
+        try { const data = await response.json(); errMsg = data?.error || errMsg; } catch {}
+        throw new Error(errMsg);
       }
 
+      const id = (Date.now() + 1).toString();
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id,
         role: 'assistant',
-        content: data.response,
+        content: '',
         timestamp: new Date(),
       };
-
       setMessages(prev => [...prev, assistantMessage]);
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        if (!chunk) continue;
+        setMessages(prev => prev.map(m => m.id === id ? { ...m, content: m.content + chunk } : m));
+      }
     } catch (error: any) {
       console.error('Error getting auto response:', error);
       
@@ -178,20 +191,32 @@ export default function ChatInterface() {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to get response');
+        let errMsg = 'Failed to get response';
+        try { const data = await response.json(); errMsg = data?.error || errMsg; } catch {}
+        throw new Error(errMsg);
       }
 
+      const id = (Date.now() + 1).toString();
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id,
         role: 'assistant',
-        content: data.response,
+        content: '',
         timestamp: new Date(),
       };
-
       setMessages(prev => [...prev, assistantMessage]);
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        if (!chunk) continue;
+        setMessages(prev => prev.map(m => m.id === id ? { ...m, content: m.content + chunk } : m));
+      }
     } catch (error: any) {
       console.error('Error sending message:', error);
       
@@ -292,7 +317,7 @@ export default function ChatInterface() {
               </div>
             ) : (
               <div key={message.id} className="mb-4">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-900">{message.content}</p>
+                <MarkdownRenderer content={message.content} />
                 <span className="text-xs mt-1 block text-gray-400">
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>

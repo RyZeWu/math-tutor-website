@@ -91,20 +91,37 @@ export default function Home() {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to get response');
+        // Try to parse JSON error if available
+        let errMsg = 'Failed to get response';
+        try {
+          const data = await response.json();
+          errMsg = data?.error || errMsg;
+        } catch {}
+        throw new Error(errMsg);
       }
 
+      const id = (Date.now() + 1).toString();
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id,
         role: 'assistant',
-        content: data.response,
+        content: '',
         timestamp: new Date(),
       };
-
       setMessages(prev => [...prev, assistantMessage]);
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) throw new Error('No response body');
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        if (!chunk) continue;
+        setMessages(prev => prev.map(m => m.id === id ? { ...m, content: m.content + chunk } : m));
+      }
     } catch (error: any) {
       console.error('Error sending message:', error);
       
